@@ -95,32 +95,47 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 pb-12">
       <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 shrink-0">
-              <BarChart3 size={20} className="text-indigo-500" />
-              <h1 className="text-sm font-bold tracking-tight text-white hidden md:block uppercase">Equity Quant</h1>
-            </div>
-
-            <nav className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800">
-              <button onClick={() => setMainTab('dashboard')} className={`px-3 py-1 text-xs font-bold rounded ${mainTab === 'dashboard' ? 'bg-slate-800 text-white' : 'text-slate-500'}`}>Report</button>
-              <button onClick={() => { setMainTab('movers'); loadMoversScan(); }} className={`px-3 py-1 text-xs font-bold rounded flex items-center gap-1.5 ${mainTab === 'movers' ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}><Activity size={12}/> Gainers</button>
-              <button onClick={() => { setMainTab('squeeze'); loadSqueezeScan(); }} className={`px-3 py-1 text-xs font-bold rounded flex items-center gap-1.5 ${mainTab === 'squeeze' ? 'bg-purple-600 text-white' : 'text-slate-500'}`}><Flame size={12}/> Squeeze</button>
-            </nav>
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-6">
+          <div className="flex items-center gap-2 shrink-0">
+            <BarChart3 size={20} className="text-indigo-500" />
+            <h1 className="text-sm font-bold tracking-tight text-white hidden md:block uppercase">Equity Quant</h1>
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); performAnalysis(ticker); }} className="flex-1 max-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-              <input 
-                type="text"
-                placeholder="Ticker..."
-                value={ticker}
-                onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1 pl-8 pr-4 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
-              />
-            </div>
-          </form>
+          <div className="flex items-center gap-3 flex-1">
+            <nav className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800 shrink-0">
+              <button 
+                onClick={() => setMainTab('dashboard')} 
+                className={`px-3 py-1 text-xs font-bold rounded ${mainTab === 'dashboard' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Report
+              </button>
+              <button 
+                onClick={() => { setMainTab('movers'); loadMoversScan(); }} 
+                className={`px-3 py-1 text-xs font-bold rounded ${mainTab === 'movers' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Gainers
+              </button>
+              <button 
+                onClick={() => { setMainTab('squeeze'); loadSqueezeScan(); }} 
+                className={`px-3 py-1 text-xs font-bold rounded ${mainTab === 'squeeze' ? 'bg-purple-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Squeeze
+              </button>
+            </nav>
+
+            <form onSubmit={(e) => { e.preventDefault(); performAnalysis(ticker); }} className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                <input 
+                  type="text"
+                  placeholder="Enter ticker (e.g. NVDA)..."
+                  value={ticker}
+                  onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 pl-8 pr-4 text-xs focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+            </form>
+          </div>
         </div>
         <MarketSentiment />
       </header>
@@ -133,13 +148,20 @@ const App: React.FC = () => {
         ) : (
           <div className="space-y-6">
             {!report && !isLoading && !error && (
-               <div className="py-20 text-center bg-slate-900/50 border border-slate-800 rounded-3xl max-w-lg mx-auto">
-                  <h2 className="text-xl font-bold mb-4">Enter a Ticker to Begin</h2>
-                  <div className="flex justify-center gap-2">
-                    {['AAPL', 'NVDA', 'TSLA'].map(s => (
-                      <button key={s} onClick={() => performAnalysis(s)} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs hover:bg-slate-700 transition-all">{s}</button>
+               <div className="py-20 text-center bg-slate-900/50 border border-slate-800 rounded-3xl max-w-2xl mx-auto px-8">
+                  <h2 className="text-xl font-bold mb-6 text-white tracking-tight">Enter a Ticker for Real-time Quantitative Analysis</h2>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {['AAPL', 'NVDA', 'TSLA', 'AVGO', 'VOO', 'VGT', 'RKLB', 'QBTS'].map(s => (
+                      <button 
+                        key={s} 
+                        onClick={() => performAnalysis(s)} 
+                        className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-black hover:bg-slate-700 hover:border-slate-600 transition-all active:scale-95"
+                      >
+                        {s}
+                      </button>
                     ))}
                   </div>
+                  <p className="mt-8 text-xs text-slate-500 font-medium">Select a quick-link above or use the expanded search bar in the header.</p>
                </div>
             )}
 
@@ -151,8 +173,8 @@ const App: React.FC = () => {
             )}
 
             {error && (
-              <div className="p-4 bg-rose-500/10 border border-rose-500/50 rounded-xl text-rose-200 text-sm font-bold flex gap-2">
-                <AlertCircle size={18}/> {error}
+              <div className="p-4 bg-rose-500/10 border border-rose-500/50 rounded-xl text-rose-200 text-sm font-bold flex gap-2 max-w-2xl mx-auto">
+                <AlertCircle size={18} className="shrink-0" /> {error}
               </div>
             )}
 
