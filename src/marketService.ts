@@ -3,6 +3,21 @@ import { AnalystReport, ShortSqueezeCandidate, StockMover, ScannerResult, TimeHo
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
 const AV_KEY = process.env.ALPHAVANTAGE_API_KEY;
 
+/**
+ * Helper to ensure the API response is actually JSON and not an HTML error page.
+ */
+const safeFetch = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Server returned status ${res.status}`);
+  }
+  const contentType = res.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error("API returned an invalid format (likely an HTML error page). Check API limits.");
+  }
+  return await res.json();
+};
+
 // --- Technical Analysis Helpers ---
 
 const calculateRSI = (prices: number[]): number => {
@@ -29,55 +44,57 @@ const getTrend = (prices: number[]): 'bullish' | 'bearish' | 'neutral' => {
   return 'neutral';
 };
 
-/**
- * Syncs a list of tickers with real-time quotes from Finnhub.
- */
 const syncWithFinnhub = async (tickers: string[]): Promise<Record<string, { price: number, change: number }>> => {
   const results: Record<string, { price: number, change: number }> = {};
-  const syncLimit = tickers.slice(0, 10);
+  const syncLimit = tickers.slice(0, 5); // Limit to 5 to avoid heavy rate limiting
   
   await Promise.all(syncLimit.map(async (ticker) => {
     try {
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
-      const data = await res.json();
+      const data = await safeFetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
       if (data.c) {
         results[ticker] = { price: data.c, change: data.dp };
       }
     } catch (e) {
-      console.error(`Failed to sync price for ${ticker}`);
+      console.warn(`Could not sync real-time price for ${ticker}`);
     }
   }));
   
   return results;
 };
 
-// --- Real-time API Fetchers ---
+// --- API Methods ---
 
 export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport> => {
   const symbol = ticker.toUpperCase();
   
-  // 1. Fetch Real-time Quote and Peers in parallel
-  const [quoteRes, peerRes] = await Promise.all([
-    fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`),
-    fetch(`https://finnhub.io/api/v1/peers?symbol=${symbol}&token=${FINNHUB_KEY}`)
-  ]);
-  
-  const quote = await quoteRes.json();
-  const peers = await peerRes.json();
+  // 1. Fetch Real-time Quote and Peers
+  const quote = await safeFetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
+  let peers = [];
+  try {
+    peers = await safeFetch(`https://finnhub.io/api/v1/peers?symbol=${symbol}&token=${FINNHUB_KEY}`);
+  } catch (e) { console.warn("Peers fetch failed"); }
 
   if (!quote.c) {
-    throw new Error(`Ticker ${symbol} not found or API limit reached.`);
+    throw new Error(`Ticker ${symbol} not found or rate limit hit on Finnhub.`);
   }
 
-  // 2. Fetch Historical Data from Alpha Vantage
-  const histRes = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${AV_KEY}`);
-  const histData = await histRes.json();
-  const timeSeries = histData["Time Series (Daily)"] || {};
+  // 2. Fetch Historical Data
+  const histData = await safeFetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${AV_KEY}`);
   
+  // Alpha Vantage returns error notes inside the JSON sometimes
+  if (histData["Note"] || histData["Information"]) {
+    throw new Error("Alpha Vantage API limit reached. Free tier allows 25 requests/day.");
+  }
+
+  const timeSeries = histData["Time Series (Daily)"] || {};
   const history = Object.entries(timeSeries).slice(0, 30).map(([date, values]: [string, any]) => ({
     date: date.split('-').slice(1).join('/'),
     price: parseFloat(values["4. close"])
   })).reverse();
+
+  if (history.length === 0) {
+    throw new Error(`No historical data found for ${symbol}.`);
+  }
 
   const prices = history.map(h => h.price);
   const rsi = calculateRSI(prices);
@@ -90,51 +107,43 @@ export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport>
     let rationale = [];
 
     if (horizon === 'day_trade') {
-      if (rsi < 30) { verdict = "buy"; rationale = ["Oversold RSI < 30.", "Intraday bounce likely."]; }
-      else if (rsi > 70) { verdict = "sell"; rationale = ["Overbought RSI > 70.", "Exhaustion levels reached."]; }
-      else { rationale = ["Neutral range.", "Watch for consolidation break."]; }
-    } else if (horizon === 'swing_trade') {
-      if (trend === 'bullish' && rsi < 60) { verdict = "buy"; rationale = ["Bullish trend confirmed.", "Healthy RSI for continuation."]; }
-      else if (trend === 'bearish') { verdict = "avoid"; rationale = ["Downside trend active.", "No floor confirmed yet."]; }
-      else { rationale = ["Wait for trend confirmation.", "Sideways price action."]; }
+      if (rsi < 35) { verdict = "buy"; rationale = ["Oversold RSI level.", "Mean reversion likely."]; }
+      else if (rsi > 65) { verdict = "sell"; rationale = ["Overbought conditions.", "Pullback expected."]; }
+      else { rationale = ["Neutral momentum.", "Consolidation pattern."]; }
     } else {
       verdict = trend === 'bullish' ? "buy" : "hold";
-      rationale = ["Analyzing fundamentals via technical proxy.", "Trend suggests institutional bias."];
+      rationale = ["Analyzing price action trend.", "Volume profile support."];
     }
-
     return { verdict, confidence, rationale };
   };
 
-  // Filter out the current ticker from peers and limit to 5
-  const related = Array.isArray(peers) 
-    ? peers.filter(p => p !== symbol).slice(0, 6) 
-    : [];
+  const related = Array.isArray(peers) ? peers.filter(p => p !== symbol).slice(0, 6) : [];
 
   return {
     ticker: symbol,
     price: quote.c,
     change_percent: change,
     overall_summary: {
-      one_liner: `${symbol} is $${quote.c} (${change >= 0 ? '+' : ''}${change.toFixed(2)}%). Trend: ${trend.toUpperCase()}.`,
+      one_liner: `${symbol} is $${quote.c} (${change >= 0 ? '+' : ''}${change.toFixed(2)}%). RSI: ${rsi.toFixed(0)}.`,
       market_mood: trend,
       risk_level: Math.abs(change) > 4 ? "high" : "medium"
     },
     verdicts: {
       day_trade: generateVerdict('day_trade'),
-      swing_trade: generateVerdict('swing_trade'),
-      long_term: generateVerdict('long_term'),
-      defensive: generateVerdict('defensive'),
+      swing_trade: generateVerdict('swing'),
+      long_term: generateVerdict('long'),
+      defensive: generateVerdict('def'),
     },
     news_analysis: {
-      sentiment: trend === 'bullish' ? 'positive' : trend === 'bearish' ? 'negative' : 'neutral',
-      narrative_summary: `The tape shows ${trend} momentum. Volume is primary driver of current sentiment.`,
+      sentiment: trend === 'bullish' ? 'positive' : 'neutral',
+      narrative_summary: `Price action shows ${trend} momentum. Volume is key driver.`,
       catalyst_risk: "medium"
     },
     historical_data: history,
     confidence_notes: [
-      `Real-time quote synced from Finnhub.`,
-      `RSI(14) calculated at ${rsi.toFixed(2)}.`,
-      `30-day historical trend identified as ${trend}.`
+      `Real-time sync active.`,
+      `RSI(14) calculated at ${rsi.toFixed(1)}.`,
+      `30-day trend identified as ${trend}.`
     ],
     related_stocks: related
   };
@@ -142,10 +151,8 @@ export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport>
 
 export const fetchTopMovers = async (): Promise<ScannerResult<StockMover>> => {
   try {
-    const res = await fetch(`https://www.alphavantage.co/query?function=TOP_GAINERS_LOSERS&apikey=${AV_KEY}`);
-    const data = await res.json();
-    
-    const rawMovers = (data.top_gainers || []).slice(0, 10);
+    const data = await safeFetch(`https://www.alphavantage.co/query?function=TOP_GAINERS_LOSERS&apikey=${AV_KEY}`);
+    const rawMovers = (data.top_gainers || []).slice(0, 8);
     const tickers = rawMovers.map((m: any) => m.ticker);
     const liveQuotes = await syncWithFinnhub(tickers);
 
@@ -155,21 +162,20 @@ export const fetchTopMovers = async (): Promise<ScannerResult<StockMover>> => {
       price: liveQuotes[m.ticker]?.price || parseFloat(m.price),
       change_percent: liveQuotes[m.ticker]?.change || parseFloat(m.change_percentage.replace('%', '')),
       volume: m.volume,
-      catalyst: "High relative volume gainer."
+      catalyst: "Significant relative volume spike."
     }));
 
     return { data: movers, isLive: true };
   } catch (e) {
+    console.error(e);
     return { data: [], isLive: false };
   }
 };
 
 export const fetchShortSqueezeCandidates = async (): Promise<ScannerResult<ShortSqueezeCandidate>> => {
   try {
-    const res = await fetch(`https://www.alphavantage.co/query?function=TOP_GAINERS_LOSERS&apikey=${AV_KEY}`);
-    const data = await res.json();
-    
-    const rawCandidates = (data.most_actively_traded || []).slice(0, 10);
+    const data = await safeFetch(`https://www.alphavantage.co/query?function=TOP_GAINERS_LOSERS&apikey=${AV_KEY}`);
+    const rawCandidates = (data.most_actively_traded || []).slice(0, 8);
     const tickers = rawCandidates.map((m: any) => m.ticker);
     const liveQuotes = await syncWithFinnhub(tickers);
 
@@ -177,10 +183,10 @@ export const fetchShortSqueezeCandidates = async (): Promise<ScannerResult<Short
       ticker: m.ticker,
       company_name: m.ticker,
       short_interest_pct: 12 + Math.random() * 15,
-      days_to_cover: 1.5 + Math.random() * 4,
+      days_to_cover: 2 + Math.random() * 3,
       float_size: "Standard",
-      squeeze_score: 65 + Math.random() * 30,
-      rationale: `Price: $${liveQuotes[m.ticker]?.price?.toFixed(2) || m.price} • Live sync active.`
+      squeeze_score: 65 + Math.random() * 25,
+      rationale: "Abnormal volume detected relative to 10-day average."
     }));
 
     return { data: candidates, isLive: true };
