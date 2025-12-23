@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { fetchAnalystReport, fetchShortSqueezeCandidates, fetchTopMovers } from './geminiService';
 import { AnalystReport, ShortSqueezeCandidate, StockMover, GroundingSource } from './types';
@@ -7,6 +6,7 @@ import { NewsAnalysis } from './components/NewsAnalysis';
 import { PriceChart } from './components/PriceChart';
 import { ShortSqueezeTable } from './components/ShortSqueezeTable';
 import { TopMoversTable } from './components/TopMoversTable';
+import MarketSentiment from './components/MarketSentiment';
 import { 
   Search, 
   TrendingUp, 
@@ -152,7 +152,7 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 shrink-0">
-              <div className="bg-blue-600 p-1.5 rounded-lg">
+              <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-500/20">
                 <BarChart3 size={20} className="text-white" />
               </div>
               <h1 className="text-lg font-bold tracking-tight text-white hidden md:block">Equity Analyst <span className="text-blue-500">PRO</span></h1>
@@ -196,8 +196,10 @@ const App: React.FC = () => {
           </form>
         </div>
 
+        <MarketSentiment />
+
         {watchlist.length > 0 && (
-          <div className="max-w-5xl mx-auto px-4 py-2 border-t border-slate-800/50 flex items-center gap-4 overflow-x-auto no-scrollbar">
+          <div className="max-w-5xl mx-auto px-4 py-2 border-b border-slate-800/50 flex items-center gap-4 overflow-x-auto no-scrollbar">
             <div className="flex items-center gap-2 text-slate-500 shrink-0">
               <Star size={14} className="fill-slate-500" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Watch</span>
@@ -231,7 +233,7 @@ const App: React.FC = () => {
       <main className="max-w-5xl mx-auto px-4 mt-8">
         {mainTab === 'squeeze' ? (
           <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8">
+            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8 shadow-xl">
               <div className="bg-purple-600/20 p-6 rounded-3xl border border-purple-500/30">
                 <Flame size={48} className="text-purple-500 animate-pulse" />
               </div>
@@ -266,7 +268,7 @@ const App: React.FC = () => {
           </div>
         ) : mainTab === 'movers' ? (
           <div className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8">
+            <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8 shadow-xl">
               <div className="bg-emerald-600/20 p-6 rounded-3xl border border-emerald-500/30">
                 <TrendingUp size={48} className="text-emerald-500 animate-bounce" />
               </div>
@@ -303,7 +305,7 @@ const App: React.FC = () => {
           <>
             {!report && !isLoading && !error && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 max-w-lg">
+                <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 max-w-lg shadow-2xl">
                   <BarChart3 size={48} className="text-blue-500 mx-auto mb-6" />
                   <h2 className="text-2xl font-bold text-white mb-3">Deep Equity Research</h2>
                   <p className="text-slate-400 mb-8 leading-relaxed">
@@ -347,7 +349,7 @@ const App: React.FC = () => {
 
             {report && !isLoading && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8">
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
@@ -415,7 +417,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-6">
                     <NewsAnalysis sentiment={report.news_analysis.sentiment} narrative={report.news_analysis.narrative_summary} risk={report.news_analysis.catalyst_risk} />
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
                       <div className="flex items-center gap-2 mb-4 text-slate-400">
                         <ShieldCheck size={18} className="text-emerald-500" />
                         <h3 className="font-bold text-white uppercase tracking-tight">Technical Confirmation Notes</h3>
@@ -428,7 +430,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div className="space-y-6">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-full">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-full shadow-xl">
                       <h3 className="font-bold text-white mb-4 flex items-center gap-2 uppercase text-xs tracking-widest">
                         <Info size={14} className="text-blue-500" />
                         Execution Context
