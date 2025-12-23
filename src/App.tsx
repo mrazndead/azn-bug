@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchAnalystReport, fetchShortSqueezeCandidates, fetchTopMovers } from './geminiService';
+import { fetchAnalystReport, fetchShortSqueezeCandidates, fetchTopMovers } from './marketService';
 import { AnalystReport, ShortSqueezeCandidate, StockMover, GroundingSource } from './types';
 import { ReportCard } from './components/ReportCard';
 import { NewsAnalysis } from './components/NewsAnalysis';
@@ -53,11 +53,11 @@ const App: React.FC = () => {
   const [reportTab, setReportTab] = useState<ReportTab>('verdicts');
 
   const loadingMessages = [
-    "Grounding real-time market price...",
-    "Querying Yahoo/Google Finance feeds...",
-    "Verifying exchange volume liquidity...",
-    "Analyzing multi-horizon risk models...",
-    "Finalizing analyst verdicts..."
+    "Syncing exchange price data...",
+    "Calculating technical RSI...",
+    "Verifying volume liquidity...",
+    "Scanning trend momentum...",
+    "Generating quant verdicts..."
   ];
 
   useEffect(() => {
@@ -80,7 +80,7 @@ const App: React.FC = () => {
     if (isLoading) {
       interval = setInterval(() => {
         setLoadingStep(prev => (prev + 1) % loadingMessages.length);
-      }, 2500);
+      }, 1500);
     } else {
       setLoadingStep(0);
     }
@@ -93,7 +93,6 @@ const App: React.FC = () => {
       const result = await fetchShortSqueezeCandidates();
       setSqueezeData(result.data);
       setSqueezeIsLive(result.isLive);
-      setSqueezeSources(result.sources || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -107,7 +106,6 @@ const App: React.FC = () => {
       const result = await fetchTopMovers();
       setMoversData(result.data);
       setMoversIsLive(result.isLive);
-      setMoversSources(result.sources || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -126,7 +124,7 @@ const App: React.FC = () => {
       setReport(data);
     } catch (err: any) {
       console.error(err);
-      setError(`Failed to generate report for ${symbol.toUpperCase()}. Check connectivity.`);
+      setError(`Unable to fetch data for ${symbol.toUpperCase()}. Check API limits.`);
     } finally {
       setIsLoading(false);
     }
@@ -152,10 +150,10 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 shrink-0">
-              <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-500/20">
+              <div className="bg-indigo-600 p-1.5 rounded-lg shadow-lg shadow-indigo-500/20">
                 <BarChart3 size={20} className="text-white" />
               </div>
-              <h1 className="text-lg font-bold tracking-tight text-white hidden md:block">Equity Analyst <span className="text-blue-500">PRO</span></h1>
+              <h1 className="text-lg font-bold tracking-tight text-white hidden md:block">Equity Quant <span className="text-indigo-500">PRO</span></h1>
             </div>
 
             <nav className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-800">
@@ -169,28 +167,28 @@ const App: React.FC = () => {
                 onClick={() => { setMainTab('movers'); loadMoversScan(); }}
                 className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${mainTab === 'movers' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-slate-500 hover:text-slate-300'}`}
               >
-                <Activity size={14} className={mainTab === 'movers' ? 'animate-pulse' : ''} />
+                <Activity size={14} />
                 Gainers
               </button>
               <button 
                 onClick={() => { setMainTab('squeeze'); loadSqueezeScan(); }}
                 className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${mainTab === 'squeeze' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:text-slate-300'}`}
               >
-                <Flame size={14} className={mainTab === 'squeeze' ? 'animate-pulse' : ''} />
-                Squeeze
+                <Flame size={14} />
+                Vol Scan
               </button>
             </nav>
           </div>
 
           <form onSubmit={handleSearch} className="flex-1 max-w-sm">
             <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
               <input 
                 type="text"
-                placeholder="Ticker Search..."
+                placeholder="Enter Ticker (e.g. AAPL)..."
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                className="w-full bg-slate-900 border border-slate-700 rounded-full py-1.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-xs"
+                className="w-full bg-slate-900 border border-slate-700 rounded-full py-1.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-xs"
               />
             </div>
           </form>
@@ -211,7 +209,7 @@ const App: React.FC = () => {
                     onClick={() => performAnalysis(sym)}
                     className={`px-3 py-1 rounded-lg text-[10px] font-black border transition-all ${
                       report?.ticker === sym 
-                        ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' 
+                        ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-400' 
                         : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
                     }`}
                   >
@@ -235,12 +233,12 @@ const App: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8 shadow-xl">
               <div className="bg-purple-600/20 p-6 rounded-3xl border border-purple-500/30">
-                <Flame size={48} className="text-purple-500 animate-pulse" />
+                <Flame size={48} className="text-purple-500" />
               </div>
               <div className="text-center md:text-left">
-                <h2 className="text-3xl font-black text-white tracking-tight mb-2">Alpha Scanner: Short Squeeze</h2>
+                <h2 className="text-3xl font-black text-white tracking-tight mb-2">Quant Scanner: High Volume</h2>
                 <p className="text-slate-400 max-w-xl text-sm leading-relaxed">
-                  Real-time algorithmic scan targeting symbols with high Short Interest % of Float and Days to Cover. Focus on Mid-Cap NYSE/NASDAQ liquidity.
+                  Algorithmic scan targeting symbols with abnormal volume spikes and potential short cover rallies. Powered by Alpha Vantage.
                 </p>
               </div>
               <button 
@@ -255,7 +253,7 @@ const App: React.FC = () => {
             {isScanningSqueeze && squeezeData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 space-y-4">
                 <Loader2 className="animate-spin text-purple-500" size={32} />
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Parsing exchange data...</p>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Scanning exchanges...</p>
               </div>
             ) : (
               <ShortSqueezeTable 
@@ -270,12 +268,12 @@ const App: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8 shadow-xl">
               <div className="bg-emerald-600/20 p-6 rounded-3xl border border-emerald-500/30">
-                <TrendingUp size={48} className="text-emerald-500 animate-bounce" />
+                <TrendingUp size={48} className="text-emerald-500" />
               </div>
               <div className="text-center md:text-left">
-                <h2 className="text-3xl font-black text-white tracking-tight mb-2">Market Leaders: Gainer Scan</h2>
+                <h2 className="text-3xl font-black text-white tracking-tight mb-2">Market Leaders: Gainers</h2>
                 <p className="text-slate-400 max-w-xl text-sm leading-relaxed">
-                  Top 10 legitimate symbols with the highest percentage gain since market open. Mandatory $5+ price and 1M+ daily volume filters.
+                  Real-time top gainers from major exchanges. Filtered for liquidity and price stability.
                 </p>
               </div>
               <button 
@@ -290,7 +288,7 @@ const App: React.FC = () => {
             {isFetchingMovers && moversData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 space-y-4">
                 <Loader2 className="animate-spin text-emerald-500" size={32} />
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Identifying real-time leaders...</p>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Fetching leaders...</p>
               </div>
             ) : (
               <TopMoversTable 
@@ -306,10 +304,10 @@ const App: React.FC = () => {
             {!report && !isLoading && !error && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 max-w-lg shadow-2xl">
-                  <BarChart3 size={48} className="text-blue-500 mx-auto mb-6" />
-                  <h2 className="text-2xl font-bold text-white mb-3">Deep Equity Research</h2>
+                  <BarChart3 size={48} className="text-indigo-500 mx-auto mb-6" />
+                  <h2 className="text-2xl font-bold text-white mb-3">Quantitative Analysis</h2>
                   <p className="text-slate-400 mb-8 leading-relaxed">
-                    Search a ticker for institutional-grade analysis grounded in real-time data.
+                    Search for technical verdicts grounded in real-time exchange data.
                   </p>
                   <div className="grid grid-cols-2 gap-3 text-left">
                     {['NVDA', 'TSLA', 'AAPL', 'AMD'].map(sym => (
@@ -330,11 +328,11 @@ const App: React.FC = () => {
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-20 space-y-6">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full animate-pulse"></div>
-                  <Loader2 className="animate-spin text-blue-500 relative" size={48} />
+                  <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse"></div>
+                  <Loader2 className="animate-spin text-indigo-500 relative" size={48} />
                 </div>
                 <div className="text-center">
-                  <p className="text-xl font-black text-white mb-2 tracking-tighter">Scanning {ticker}</p>
+                  <p className="text-xl font-black text-white mb-2 tracking-tighter">Calculating {ticker}</p>
                   <p className="text-slate-500 animate-pulse text-sm h-5 font-medium">{loadingMessages[loadingStep]}</p>
                 </div>
               </div>
@@ -366,11 +364,7 @@ const App: React.FC = () => {
                         </button>
                       </div>
                       <div className="flex items-center gap-4 text-2xl font-bold">
-                        {report.price > 0 ? (
-                          <span>${report.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        ) : (
-                          <span className="text-slate-600 italic text-lg">Price Pending Sync...</span>
-                        )}
+                        <span>${report.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         <span className={`flex items-center gap-1 ${report.change_percent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                           {report.change_percent >= 0 ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
                           {report.change_percent > 0 ? '+' : ''}{report.change_percent.toFixed(2)}%
@@ -378,34 +372,34 @@ const App: React.FC = () => {
                       </div>
                     </div>
                     <div className="bg-slate-800/50 px-6 py-4 rounded-2xl border border-slate-700 min-w-[240px]">
-                      <p className="text-[10px] uppercase text-slate-500 font-black mb-1 tracking-widest">Executive Summary</p>
-                      <p className="text-sm text-slate-200 leading-tight font-medium italic">"{report?.overall_summary?.one_liner || 'Finalizing data synthesis...'}"</p>
+                      <p className="text-[10px] uppercase text-slate-500 font-black mb-1 tracking-widest">Quant Summary</p>
+                      <p className="text-sm text-slate-200 leading-tight font-medium italic">"{report.overall_summary.one_liner}"</p>
                     </div>
                   </div>
 
                   <div className="flex border-b border-slate-800 mb-6">
-                    <button onClick={() => setReportTab('verdicts')} className={`px-4 py-2 text-xs font-bold transition-all relative ${reportTab === 'verdicts' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}>
+                    <button onClick={() => setReportTab('verdicts')} className={`px-4 py-2 text-xs font-bold transition-all relative ${reportTab === 'verdicts' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>
                       <div className="flex items-center gap-2">
                         <LayoutGrid size={14} />
-                        Strategic Verdicts
+                        Technical Verdicts
                       </div>
-                      {reportTab === 'verdicts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />}
+                      {reportTab === 'verdicts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full" />}
                     </button>
-                    <button onClick={() => setReportTab('charts')} className={`px-4 py-2 text-xs font-bold transition-all relative ${reportTab === 'charts' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}>
+                    <button onClick={() => setReportTab('charts')} className={`px-4 py-2 text-xs font-bold transition-all relative ${reportTab === 'charts' ? 'text-indigo-500' : 'text-slate-500 hover:text-slate-300'}`}>
                       <div className="flex items-center gap-2">
                         <LineChartIcon size={14} />
-                        Historical Action
+                        Price Action
                       </div>
-                      {reportTab === 'charts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />}
+                      {reportTab === 'charts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full" />}
                     </button>
                   </div>
 
                   {reportTab === 'verdicts' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <ReportCard title="Day Trade" subtitle="Intraday • 48h" data={report.verdicts.day_trade} />
-                      <ReportCard title="Swing Trade" subtitle="1 • 4 Weeks" data={report.verdicts.swing_trade} />
-                      <ReportCard title="Long Term" subtitle="Institutional Hold" data={report.verdicts.long_term} />
-                      <ReportCard title="Defensive" subtitle="Risk Management" data={report.verdicts.defensive} />
+                      <ReportCard title="Day Trade" subtitle="Momentum" data={report.verdicts.day_trade} />
+                      <ReportCard title="Swing Trade" subtitle="Trend" data={report.verdicts.swing_trade} />
+                      <ReportCard title="Long Term" subtitle="Quant Value" data={report.verdicts.long_term} />
+                      <ReportCard title="Defensive" subtitle="Risk Mode" data={report.verdicts.defensive} />
                     </div>
                   ) : (
                     <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
@@ -420,7 +414,7 @@ const App: React.FC = () => {
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
                       <div className="flex items-center gap-2 mb-4 text-slate-400">
                         <ShieldCheck size={18} className="text-emerald-500" />
-                        <h3 className="font-bold text-white uppercase tracking-tight">Technical Confirmation Notes</h3>
+                        <h3 className="font-bold text-white uppercase tracking-tight">Signal Confirmation</h3>
                       </div>
                       <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {report.confidence_notes.map((note, i) => (
@@ -432,7 +426,7 @@ const App: React.FC = () => {
                   <div className="space-y-6">
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-full shadow-xl">
                       <h3 className="font-bold text-white mb-4 flex items-center gap-2 uppercase text-xs tracking-widest">
-                        <Info size={14} className="text-blue-500" />
+                        <Info size={14} className="text-indigo-500" />
                         Execution Context
                       </h3>
                       <div className="space-y-4">
@@ -444,26 +438,13 @@ const App: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <Clock className="text-blue-400 shrink-0 mt-1" size={16} />
+                          <Clock className="text-indigo-400 shrink-0 mt-1" size={16} />
                           <div>
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Analysis Status</p>
-                            <p className="text-sm text-slate-300 font-bold">Verified via Search Grounding</p>
+                            <p className="text-sm text-slate-300 font-bold">Technical Calculation Active</p>
                           </div>
                         </div>
                       </div>
-                      {report.grounding_sources && report.grounding_sources.length > 0 && (
-                        <div className="mt-8 pt-6 border-t border-slate-800">
-                          <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Verification Sources</h4>
-                          <div className="space-y-2">
-                            {report.grounding_sources.slice(0, 4).map((source, i) => (
-                              <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between group p-2 rounded-lg hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
-                                <span className="text-[10px] text-slate-400 truncate max-w-[150px] font-bold group-hover:text-blue-400">{source.title}</span>
-                                <ExternalLink size={10} className="text-slate-600 group-hover:text-blue-500" />
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
