@@ -1,4 +1,3 @@
-
 export type VerdictType = "buy" | "hold" | "sell" | "avoid" | "short";
 export type RiskLevel = "low" | "medium" | "high";
 export type MarketMood = "bullish" | "neutral" | "bearish";
@@ -68,4 +67,5 @@ export interface AnalystReport {
   historical_data: HistoryPoint[];
   confidence_notes: string[];
   grounding_sources?: GroundingSource[];
+  related_stocks?: string[];
 }

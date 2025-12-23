@@ -31,12 +31,9 @@ const getTrend = (prices: number[]): 'bullish' | 'bearish' | 'neutral' => {
 
 /**
  * Syncs a list of tickers with real-time quotes from Finnhub.
- * This ensures that even if the list comes from a delayed source, the price is LIVE.
  */
 const syncWithFinnhub = async (tickers: string[]): Promise<Record<string, { price: number, change: number }>> => {
   const results: Record<string, { price: number, change: number }> = {};
-  
-  // We sync only the top 10 to stay within Finnhub free-tier rate limits
   const syncLimit = tickers.slice(0, 10);
   
   await Promise.all(syncLimit.map(async (ticker) => {
@@ -57,14 +54,23 @@ const syncWithFinnhub = async (tickers: string[]): Promise<Record<string, { pric
 // --- Real-time API Fetchers ---
 
 export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport> => {
-  const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${FINNHUB_KEY}`);
+  const symbol = ticker.toUpperCase();
+  
+  // 1. Fetch Real-time Quote and Peers in parallel
+  const [quoteRes, peerRes] = await Promise.all([
+    fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`),
+    fetch(`https://finnhub.io/api/v1/peers?symbol=${symbol}&token=${FINNHUB_KEY}`)
+  ]);
+  
   const quote = await quoteRes.json();
+  const peers = await peerRes.json();
 
   if (!quote.c) {
-    throw new Error(`Ticker ${ticker} not found or API limit reached.`);
+    throw new Error(`Ticker ${symbol} not found or API limit reached.`);
   }
 
-  const histRes = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${ticker.toUpperCase()}&apikey=${AV_KEY}`);
+  // 2. Fetch Historical Data from Alpha Vantage
+  const histRes = await fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${AV_KEY}`);
   const histData = await histRes.json();
   const timeSeries = histData["Time Series (Daily)"] || {};
   
@@ -99,12 +105,17 @@ export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport>
     return { verdict, confidence, rationale };
   };
 
+  // Filter out the current ticker from peers and limit to 5
+  const related = Array.isArray(peers) 
+    ? peers.filter(p => p !== symbol).slice(0, 6) 
+    : [];
+
   return {
-    ticker: ticker.toUpperCase(),
+    ticker: symbol,
     price: quote.c,
     change_percent: change,
     overall_summary: {
-      one_liner: `${ticker.toUpperCase()} is $${quote.c} (${change >= 0 ? '+' : ''}${change.toFixed(2)}%). Trend: ${trend.toUpperCase()}.`,
+      one_liner: `${symbol} is $${quote.c} (${change >= 0 ? '+' : ''}${change.toFixed(2)}%). Trend: ${trend.toUpperCase()}.`,
       market_mood: trend,
       risk_level: Math.abs(change) > 4 ? "high" : "medium"
     },
@@ -124,7 +135,8 @@ export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport>
       `Real-time quote synced from Finnhub.`,
       `RSI(14) calculated at ${rsi.toFixed(2)}.`,
       `30-day historical trend identified as ${trend}.`
-    ]
+    ],
+    related_stocks: related
   };
 };
 
@@ -135,8 +147,6 @@ export const fetchTopMovers = async (): Promise<ScannerResult<StockMover>> => {
     
     const rawMovers = (data.top_gainers || []).slice(0, 10);
     const tickers = rawMovers.map((m: any) => m.ticker);
-    
-    // SYNC with Finnhub for real-time accuracy
     const liveQuotes = await syncWithFinnhub(tickers);
 
     const movers = rawMovers.map((m: any) => ({
@@ -145,7 +155,7 @@ export const fetchTopMovers = async (): Promise<ScannerResult<StockMover>> => {
       price: liveQuotes[m.ticker]?.price || parseFloat(m.price),
       change_percent: liveQuotes[m.ticker]?.change || parseFloat(m.change_percentage.replace('%', '')),
       volume: m.volume,
-      catalyst: "Real-time sync confirmed via Finnhub."
+      catalyst: "High relative volume gainer."
     }));
 
     return { data: movers, isLive: true };
@@ -161,8 +171,6 @@ export const fetchShortSqueezeCandidates = async (): Promise<ScannerResult<Short
     
     const rawCandidates = (data.most_actively_traded || []).slice(0, 10);
     const tickers = rawCandidates.map((m: any) => m.ticker);
-    
-    // SYNC with Finnhub for real-time accuracy
     const liveQuotes = await syncWithFinnhub(tickers);
 
     const candidates = rawCandidates.map((m: any) => ({

@@ -23,7 +23,8 @@ import {
   LineChart as LineChartIcon,
   Flame,
   Activity,
-  RefreshCw
+  RefreshCw,
+  Users
 } from 'lucide-react';
 
 type MainTab = 'dashboard' | 'squeeze' | 'movers';
@@ -156,12 +157,12 @@ const App: React.FC = () => {
             )}
 
             {report && !isLoading && (
-              <div className="space-y-8">
+              <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <div className="flex items-center gap-3">
-                        <h2 className="text-5xl font-black text-white">{report.ticker}</h2>
+                        <h2 className="text-5xl font-black text-white tracking-tighter">{report.ticker}</h2>
                         <button onClick={() => toggleWatchlist(report.ticker)}><Star className={watchlist.includes(report.ticker) ? "fill-amber-400 text-amber-400" : "text-slate-600"} size={24}/></button>
                         <button onClick={() => performAnalysis(report.ticker)} className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all"><RefreshCw size={16} className="text-slate-400" /></button>
                       </div>
@@ -195,6 +196,43 @@ const App: React.FC = () => {
                   ) : (
                     <PriceChart data={report.historical_data} isPositive={report.change_percent >= 0} />
                   )}
+                </div>
+
+                {/* Related Peers Section */}
+                {report.related_stocks && report.related_stocks.length > 0 && (
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Users size={16} className="text-blue-400" />
+                      <h3 className="text-sm font-bold text-white uppercase tracking-widest">Industry Peers & Related Stocks</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {report.related_stocks.map(peer => (
+                        <button
+                          key={peer}
+                          onClick={() => performAnalysis(peer)}
+                          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-black text-slate-300 transition-all hover:scale-105 active:scale-95"
+                        >
+                          {peer}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-4 text-[10px] text-slate-500 font-medium">Click a peer ticker to view its quantitative report and technical verdicts.</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <NewsAnalysis sentiment={report.news_analysis.sentiment} narrative={report.news_analysis.narrative_summary} risk={report.news_analysis.catalyst_risk} />
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Quant Confirmation</h3>
+                    <ul className="space-y-3">
+                      {report.confidence_notes.map((note, i) => (
+                        <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
+                          <ShieldCheck size={14} className="text-emerald-500 mt-1 shrink-0" />
+                          {note}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </div>
             )}
