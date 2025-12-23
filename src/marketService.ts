@@ -7,13 +7,17 @@ const AV_KEY = process.env.ALPHAVANTAGE_API_KEY;
  * Helper to ensure the API response is actually JSON and not an HTML error page.
  */
 const safeFetch = async (url: string) => {
+  if (url.includes('undefined') || url.includes('token=&') || url.includes('apikey=&')) {
+    throw new Error("Missing API Key. Please add FINNHUB_API_KEY and ALPHAVANTAGE_API_KEY to your environment variables.");
+  }
+
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Server returned status ${res.status}`);
   }
   const contentType = res.headers.get("content-type");
   if (!contentType || !contentType.includes("application/json")) {
-    throw new Error("API returned an invalid format (likely an HTML error page). Check API limits.");
+    throw new Error("API returned an invalid format. This usually means the API key is invalid or the limit was reached.");
   }
   return await res.json();
 };
@@ -46,7 +50,7 @@ const getTrend = (prices: number[]): 'bullish' | 'bearish' | 'neutral' => {
 
 const syncWithFinnhub = async (tickers: string[]): Promise<Record<string, { price: number, change: number }>> => {
   const results: Record<string, { price: number, change: number }> = {};
-  const syncLimit = tickers.slice(0, 5); // Limit to 5 to avoid heavy rate limiting
+  const syncLimit = tickers.slice(0, 5);
   
   await Promise.all(syncLimit.map(async (ticker) => {
     try {
@@ -67,7 +71,6 @@ const syncWithFinnhub = async (tickers: string[]): Promise<Record<string, { pric
 export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport> => {
   const symbol = ticker.toUpperCase();
   
-  // 1. Fetch Real-time Quote and Peers
   const quote = await safeFetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
   let peers = [];
   try {
@@ -75,15 +78,13 @@ export const fetchAnalystReport = async (ticker: string): Promise<AnalystReport>
   } catch (e) { console.warn("Peers fetch failed"); }
 
   if (!quote.c) {
-    throw new Error(`Ticker ${symbol} not found or rate limit hit on Finnhub.`);
+    throw new Error(`Ticker ${symbol} not found or rate limit hit.`);
   }
 
-  // 2. Fetch Historical Data
   const histData = await safeFetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${AV_KEY}`);
   
-  // Alpha Vantage returns error notes inside the JSON sometimes
   if (histData["Note"] || histData["Information"]) {
-    throw new Error("Alpha Vantage API limit reached. Free tier allows 25 requests/day.");
+    throw new Error("Alpha Vantage API limit reached (25 reqs/day).");
   }
 
   const timeSeries = histData["Time Series (Daily)"] || {};
