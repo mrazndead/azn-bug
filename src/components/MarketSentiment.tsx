@@ -6,11 +6,8 @@ import { Globe, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 const MarketSentiment = () => {
   return (
     <div className="bg-slate-900/50 border-y border-slate-800 px-4 py-1.5 overflow-hidden">
-      <div className="max-w-5xl mx-auto flex items-center gap-8 animate-in fade-in duration-500">
-        <div className="flex items-center gap-2 shrink-0">
-          <Globe size={12} className="text-blue-400" />
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Market Pulse</span>
-        </div>
+      <div className="max-w-5xl mx-auto flex items-center gap-4 animate-in fade-in duration-500">
+        <Globe size={12} className="text-blue-400 shrink-0" />
         
         <div className="flex items-center gap-6 overflow-x-auto no-scrollbar whitespace-nowrap py-0.5">
           <div className="flex items-center gap-2">
