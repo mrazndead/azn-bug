@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { StockMover, GroundingSource } from '../types';
-import { TrendingUp, Activity, ShieldCheck, ShieldAlert, ExternalLink, Clock } from 'lucide-react';
+import { Activity, ShieldCheck, ShieldAlert, ExternalLink, Clock } from 'lucide-react';
 
 interface TopMoversTableProps {
   movers: StockMover[];
@@ -31,31 +30,22 @@ export const TopMoversTable: React.FC<TopMoversTableProps> = ({ movers, isLive, 
           {isLive ? (
             <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
               <ShieldCheck size={12} className="text-emerald-500" />
-              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live: Grounded</span>
+              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">API: Connected</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
               <ShieldAlert size={12} className="text-amber-500" />
-              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Offline: Estimates</span>
+              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">API: Restricted</span>
             </div>
           )}
         </div>
       </div>
 
-      {!isLive && (
-        <div className="px-6 py-3 bg-amber-900/20 border-b border-amber-500/20 flex items-center gap-3">
-          <div className="bg-amber-500 text-amber-950 p-1 rounded font-black text-[10px]">AUTH_ERROR</div>
-          <p className="text-xs text-amber-200 font-medium">
-            Real-time scanner connection failed. Showing most recent verified market leaders.
-          </p>
-        </div>
-      )}
-
       <div className="overflow-x-auto">
         {movers.length === 0 ? (
           <div className="py-20 text-center space-y-4">
             <Activity className="mx-auto text-slate-800" size={48} />
-            <p className="text-slate-500 font-medium italic">No high-volume gainers detected in the current scan.</p>
+            <p className="text-slate-500 font-medium italic">Scanning exchange for top gainers...</p>
           </div>
         ) : (
           <table className="w-full text-left text-sm">
